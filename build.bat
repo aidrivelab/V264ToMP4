@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo H264ToMP4 构建脚本
+echo V264ToMP4 构建脚本
 echo ========================================
 echo.
 
@@ -8,8 +8,8 @@ echo.
 set VERSION=1.0.0
 set BUILD_DIR=build
 set DIST_DIR=dist
-set PORTABLE_DIR=H264ToMP4_Portable_v%VERSION%
-set INSTALLER_DIR=H264ToMP4_Installer_v%VERSION%
+set PORTABLE_DIR=V264ToMP4_Portable_v%VERSION%
+set INSTALLER_DIR=V264ToMP4_Installer_v%VERSION%
 
 :: 清理之前的构建
 echo 清理之前的构建文件...
@@ -44,7 +44,7 @@ if %errorlevel% neq 0 (
 
 :: 使用PyInstaller打包
 echo 使用PyInstaller打包应用程序...
-pyinstaller --name H264ToMP4 ^
+pyinstaller --name V264ToMP4 ^
             --windowed ^
             --icon=assets/icon.ico ^
             --add-data "assets;assets" ^
@@ -68,9 +68,9 @@ if %errorlevel% neq 0 (
 
 :: 创建便携版
 echo 创建便携版...
-xcopy %DIST_DIR%\H264ToMP4\* %PORTABLE_DIR%\ /E /I /H /Y
+xcopy %DIST_DIR%\V264ToMP4\* %PORTABLE_DIR%\ /E /I /H /Y
 echo @echo off > %PORTABLE_DIR%\start.bat
-echo start "" H264ToMP4.exe >> %PORTABLE_DIR%\start.bat
+echo start "" V264ToMP4.exe >> %PORTABLE_DIR%\start.bat
 
 :: 创建便携版压缩包
 echo 创建便携版压缩包...
@@ -86,26 +86,26 @@ xcopy %PORTABLE_DIR%\* %INSTALLER_DIR%\files\ /E /I /H /Y
 :: 创建安装脚本
 echo 创建安装脚本...
 echo @echo off > %INSTALLER_DIR%\install.bat
-echo echo 正在安装H264ToMP4... >> %INSTALLER_DIR%\install.bat
-echo set INSTALL_DIR=%%PROGRAMFILES%%\H264ToMP4 >> %INSTALLER_DIR%\install.bat
+echo echo 正在安装V264ToMP4... >> %INSTALLER_DIR%\install.bat
+echo set INSTALL_DIR=%%PROGRAMFILES%%\V264ToMP4 >> %INSTALLER_DIR%\install.bat
 echo if not exist "%%INSTALL_DIR%%" mkdir "%%INSTALL_DIR%%" >> %INSTALLER_DIR%\install.bat
 echo xcopy files\* "%%INSTALL_DIR%%\" /E /I /H /Y >> %INSTALLER_DIR%\install.bat
 echo echo 创建桌面快捷方式... >> %INSTALLER_DIR%\install.bat
-echo powershell -command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%%PUBLIC%%\Desktop\H264ToMP4.lnk'); $Shortcut.TargetPath = '%%INSTALL_DIR%%\H264ToMP4.exe'; $Shortcut.Save()" >> %INSTALLER_DIR%\install.bat
+echo powershell -command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%%PUBLIC%%\Desktop\V264ToMP4.lnk'); $Shortcut.TargetPath = '%%INSTALL_DIR%%\V264ToMP4.exe'; $Shortcut.Save()" >> %INSTALLER_DIR%\install.bat
 echo echo 创建开始菜单快捷方式... >> %INSTALLER_DIR%\install.bat
-echo if not exist "%%PROGRAMDATA%%\Microsoft\Windows\Start Menu\Programs\H264ToMP4" mkdir "%%PROGRAMDATA%%\Microsoft\Windows\Start Menu\Programs\H264ToMP4" >> %INSTALLER_DIR%\install.bat
-echo powershell -command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%%PROGRAMDATA%%\Microsoft\Windows\Start Menu\Programs\H264ToMP4\H264ToMP4.lnk'); $Shortcut.TargetPath = '%%INSTALL_DIR%%\H264ToMP4.exe'; $Shortcut.Save()" >> %INSTALLER_DIR%\install.bat
+echo if not exist "%%PROGRAMDATA%%\Microsoft\Windows\Start Menu\Programs\V264ToMP4" mkdir "%%PROGRAMDATA%%\Microsoft\Windows\Start Menu\Programs\V264ToMP4" >> %INSTALLER_DIR%\install.bat
+echo powershell -command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%%PROGRAMDATA%%\Microsoft\Windows\Start Menu\Programs\V264ToMP4\V264ToMP4.lnk'); $Shortcut.TargetPath = '%%INSTALL_DIR%%\V264ToMP4.exe'; $Shortcut.Save()" >> %INSTALLER_DIR%\install.bat
 echo echo 安装完成！ >> %INSTALLER_DIR%\install.bat
 echo pause >> %INSTALLER_DIR%\install.bat
 
 :: 创建卸载脚本
 echo 创建卸载脚本...
 echo @echo off > %INSTALLER_DIR%\uninstall.bat
-echo echo 正在卸载H264ToMP4... >> %INSTALLER_DIR%\uninstall.bat
-echo set INSTALL_DIR=%%PROGRAMFILES%%\H264ToMP4 >> %INSTALLER_DIR%\uninstall.bat
+echo echo 正在卸载V264ToMP4... >> %INSTALLER_DIR%\uninstall.bat
+echo set INSTALL_DIR=%%PROGRAMFILES%%\V264ToMP4 >> %INSTALLER_DIR%\uninstall.bat
 echo if exist "%%INSTALL_DIR%%" rmdir /s /q "%%INSTALL_DIR%%" >> %INSTALLER_DIR%\uninstall.bat
-echo if exist "%%PUBLIC%%\Desktop\H264ToMP4.lnk" del "%%PUBLIC%%\Desktop\H264ToMP4.lnk" >> %INSTALLER_DIR%\uninstall.bat
-echo if exist "%%PROGRAMDATA%%\Microsoft\Windows\Start Menu\Programs\H264ToMP4" rmdir /s /q "%%PROGRAMDATA%%\Microsoft\Windows\Start Menu\Programs\H264ToMP4" >> %INSTALLER_DIR%\uninstall.bat
+echo if exist "%%PUBLIC%%\Desktop\V264ToMP4.lnk" del "%%PUBLIC%%\Desktop\V264ToMP4.lnk" >> %INSTALLER_DIR%\uninstall.bat
+echo if exist "%%PROGRAMDATA%%\Microsoft\Windows\Start Menu\Programs\V264ToMP4" rmdir /s /q "%%PROGRAMDATA%%\Microsoft\Windows\Start Menu\Programs\V264ToMP4" >> %INSTALLER_DIR%\uninstall.bat
 echo echo 卸载完成！ >> %INSTALLER_DIR%\uninstall.bat
 echo pause >> %INSTALLER_DIR%\uninstall.bat
 

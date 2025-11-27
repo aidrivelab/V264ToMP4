@@ -1,15 +1,15 @@
-# H264ToMP4 - 海雀监控视频转码工具
+# V264ToMP4 - 海雀监控视频转码工具
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://www.microsoft.com/windows)
-[![Release](https://img.shields.io/badge/release-1.0.0-green.svg)](https://github.com/yourusername/H264ToMP4/releases)
+[![Release](https://img.shields.io/badge/release-1.0.0-green.svg)](https://github.com/aidrivelab/V264ToMP4/releases)
 
 ## 项目简介
 
-H264ToMP4是一个专门用于将海雀监控摄像头录制的.v264格式视频文件转换为标准MP4格式的工具。转换后的MP4文件可以在各种主流播放器和设备上播放，支持进度条拖动。
+V264ToMP4是一个专门用于将海雀监控摄像头录制的.v264格式视频文件转换为标准MP4格式的工具。转换后的MP4文件可以在各种主流播放器和设备上播放，支持进度条拖动。
 
-![应用截图](https://github.com/yourusername/H264ToMP4/raw/main/resources/screenshot.png)
+![应用截图](https://github.com/aidrivelab/V264ToMP4/blob/main/image/ScreenShot_2025-11-27_222750_865.png?raw=true)
 
 ## 功能特点
 
@@ -26,9 +26,9 @@ H264ToMP4是一个专门用于将海雀监控摄像头录制的.v264格式视频
 
 ### 下载安装
 
-1. 从[GitHub Releases](https://github.com/yourusername/H264ToMP4/releases)下载最新版本
+1. 从[GitHub Releases](https://github.com/aidrivelab/V264ToMP4/releases)下载最新版本
 2. 解压到任意目录（建议使用英文路径）
-3. 双击运行`H264ToMP4.exe`即可使用
+3. 双击运行`V264ToMP4.exe`即可使用
 
 ### 基本使用
 
@@ -56,7 +56,7 @@ H264ToMP4是一个专门用于将海雀监控摄像头录制的.v264格式视频
 ## 项目结构
 
 ```
-H264ToMP4/
+V264ToMP4/
 ├── core/                # 核心功能模块
 │   ├── file_manager.py  # 文件管理模块
 │   ├── config_manager.py # 配置管理模块
@@ -114,8 +114,8 @@ A: 在界面上勾选"合并为一个视频"选项，程序会按文件名中的
 
 1. 克隆仓库：
    ```
-   git clone https://github.com/yourusername/H264ToMP4.git
-   cd H264ToMP4
+   git clone https://github.com/aidrivelab/V264ToMP4.git
+   cd V264ToMP4
    ```
 
 2. 创建虚拟环境（推荐）：
@@ -167,5 +167,5 @@ pyinstaller --onefile --windowed --icon=resources/app.ico main.py
 ## 联系方式
 
 - 邮箱：your_email@example.com
-- GitHub：https://github.com/yourusername/H264ToMP4
-- Issues：https://github.com/yourusername/H264ToMP4/issues
+- GitHub：https://github.com/aidrivelab/V264ToMP4
+- Issues：https://github.com/aidrivelab/V264ToMP4/issues
