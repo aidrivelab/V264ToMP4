@@ -1,0 +1,19 @@
+# H264ToMP4项目依赖
+# 核心依赖
+pyinstaller>=6.17.0
+
+# GUI相关
+# tkinter是Python标准库，无需安装
+
+# 日志相关
+# logging是Python标准库，无需安装
+
+# 系统相关
+# os, sys, subprocess, threading是Python标准库，无需安装
+
+# 文件处理
+# pathlib是Python标准库，无需安装
+
+# 可选依赖（如果项目中使用了）
+# PIL>=1.1.6  # 如果需要图像处理
+# numpy>=1.19.0  # 如果需要数值计算

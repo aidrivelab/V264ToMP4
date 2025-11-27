@@ -1,0 +1,141 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    
+    - name: Create version info
+      run: |
+        $version = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF.Substring(10) } else { "dev" }
+        $buildDate = Get-Date -Format "yyyy-MM-dd"
+        $gitCommit = git rev-parse --short HEAD
+        @"
+        {
+          "version": "$version",
+          "build_date": "$buildDate",
+          "git_commit": "$gitCommit"
+        }
+        "@ | Out-File -FilePath build_info.json -Encoding utf8
+        cat build_info.json
+    
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller --name H264ToMP4 `
+                    --windowed `
+                    --icon=assets/icon.ico `
+                    --add-data "assets;assets" `
+                    --add-data "config.json;." `
+                    --add-data "VERSION.json;." `
+                    --add-data "LICENSE;." `
+                    --add-data "README.md;." `
+                    --add-data "CHANGELOG.md;." `
+                    --add-data "INSTALLATION_AND_USAGE.md;." `
+                    --add-data "RELEASE_NOTES.md;." `
+                    --add-data "build_info.json;." `
+                    main.py
+    
+    - name: Create portable package
+      run: |
+        mkdir H264ToMP4_Portable
+        Copy-Item -Path "dist/H264ToMP4/*" -Destination "H264ToMP4_Portable" -Recurse
+        echo "@echo off" > H264ToMP4_Portable/start.bat
+        echo "start "" H264ToMP4.exe" >> H264ToMP4_Portable/start.bat
+        7z a H264ToMP4_Portable.zip H264ToMP4_Portable
+    
+    - name: Create installer package
+      run: |
+        mkdir H264ToMP4_Installer
+        mkdir H264ToMP4_Installer/files
+        Copy-Item -Path "H264ToMP4_Portable/*" -Destination "H264ToMP4_Installer/files" -Recurse
+        
+        # Create install script
+        @"
+        @echo off
+        echo 正在安装H264ToMP4...
+        set INSTALL_DIR=%PROGRAMFILES%\H264ToMP4
+        if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+        xcopy files\* "%INSTALL_DIR%\" /E /I /H /Y
+        
+        echo 创建桌面快捷方式...
+        powershell -command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%PUBLIC%\Desktop\H264ToMP4.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\H264ToMP4.exe'; $Shortcut.Save()"
+        
+        echo 创建开始菜单快捷方式...
+        if not exist "%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\H264ToMP4" mkdir "%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\H264ToMP4"
+        powershell -command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\H264ToMP4\H264ToMP4.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\H264ToMP4.exe'; $Shortcut.Save()"
+        
+        echo 安装完成！
+        pause
+        "@ | Out-File -FilePath H264ToMP4_Installer/install.bat -Encoding ascii
+        
+        # Create uninstall script
+        @"
+        @echo off
+        echo 正在卸载H264ToMP4...
+        set INSTALL_DIR=%PROGRAMFILES%\H264ToMP4
+        if exist "%INSTALL_DIR%" rmdir /s /q "%INSTALL_DIR%"
+        if exist "%PUBLIC%\Desktop\H264ToMP4.lnk" del "%PUBLIC%\Desktop\H264ToMP4.lnk"
+        if exist "%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\H264ToMP4" rmdir /s /q "%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\H264ToMP4"
+        echo 卸载完成！
+        pause
+        "@ | Out-File -FilePath H264ToMP4_Installer/uninstall.bat -Encoding ascii
+        
+        7z a H264ToMP4_Installer.zip H264ToMP4_Installer
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: H264ToMP4_Bundles
+        path: |
+          H264ToMP4_Portable.zip
+          H264ToMP4_Installer.zip
+    
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          H264ToMP4_Portable.zip
+          H264ToMP4_Installer.zip
+        body: |
+          ## H264ToMP4 发布版本 ${{ github.ref_name }}
+          
+          ### 下载说明
+          - `H264ToMP4_Portable.zip`: 便携版，解压后直接运行
+          - `H264ToMP4_Installer.zip`: 安装版，包含安装和卸载脚本
+          
+          ### 系统要求
+          - Windows 7 (64位) 或更高版本
+          - 至少 4GB RAM
+          - 至少 1GB 可用硬盘空间
+          
+          ### 安装与使用
+          请参考 [安装与使用指南](INSTALLATION_AND_USAGE.md) 获取详细说明。
+          
+          ### 变更日志
+          请查看 [CHANGELOG.md](CHANGELOG.md) 了解此版本的详细变更。
+          
+          ### 技术支持
+          如果遇到问题，请在 [Issues](https://github.com/yourusername/H264ToMP4/issues) 页面提交问题报告。
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

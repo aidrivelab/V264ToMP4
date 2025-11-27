@@ -1,0 +1,83 @@
+{
+  "name": "H264ToMP4",
+  "version": "1.0.0",
+  "description": "海雀监控视频转码工具 - 将.v264格式视频文件转换为标准MP4格式",
+  "author": "H264ToMP4开发团队",
+  "license": "MIT",
+  "homepage": "https://github.com/yourusername/H264ToMP4",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/H264ToMP4.git"
+  },
+  "build_date": "2024-01-01",
+  "python_version": "3.7+",
+  "platform": "Windows",
+  "architecture": "x64",
+  "dependencies": {
+    "ffmpeg": "4.4+",
+    "python": "3.7+",
+    "tkinter": "内置"
+  },
+  "features": [
+    "批量转码.v264格式视频文件",
+    "多线程并行处理",
+    "视频片段合并",
+    "音频流处理",
+    "进度监控和控制",
+    "配置文件保存",
+    "详细日志记录"
+  ],
+  "changelog": {
+    "1.0.0": {
+      "date": "2024-01-01",
+      "changes": [
+        "初始版本发布",
+        "支持基本转码功能",
+        "添加图形用户界面",
+        "实现多线程处理",
+        "添加视频合并功能",
+        "添加音频处理选项",
+        "实现进度监控和控制",
+        "添加配置保存功能",
+        "完善错误处理和日志记录"
+      ]
+    }
+  },
+  "requirements": {
+    "minimum": {
+      "os": "Windows 7",
+      "ram": "4GB",
+      "cpu": "双核2.0GHz",
+      "disk_space": "1GB"
+    },
+    "recommended": {
+      "os": "Windows 10/11",
+      "ram": "8GB",
+      "cpu": "四核2.5GHz",
+      "disk_space": "10GB"
+    }
+  },
+  "installation": {
+    "portable": {
+      "description": "便携版，无需安装",
+      "files": [
+        "H264ToMP4.exe",
+        "ffmpeg.exe",
+        "config.json"
+      ]
+    },
+    "installer": {
+      "description": "安装版，包含卸载程序",
+      "registry_entries": [
+        "HKEY_LOCAL_MACHINE\\SOFTWARE\\H264ToMP4"
+      ]
+    }
+  },
+  "file_associations": {
+    ".v264": {
+      "description": "海雀监控视频文件",
+      "icon": "app.ico",
+      "handler": "H264ToMP4.exe"
+    }
+  }
+}
