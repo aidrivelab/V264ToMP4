@@ -1,6 +1,6 @@
 {
   "name": "H264ToMP4",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "海雀监控视频转码工具 - 将.v264格式视频文件转换为标准MP4格式",
   "author": "H264ToMP4开发团队",
   "license": "MIT",
@@ -9,7 +9,7 @@
     "type": "git",
     "url": "https://github.com/yourusername/H264ToMP4.git"
   },
-  "build_date": "2024-01-01",
+  "build_date": "2025-12-01",
   "python_version": "3.7+",
   "platform": "Windows",
   "architecture": "x64",
@@ -28,6 +28,15 @@
     "详细日志记录"
   ],
   "changelog": {
+    "1.1.0": {
+      "date": "2025-12-01",
+      "changes": [
+        "修复海雀监控特殊格式.v264文件转码失败问题",
+        "优化转码命令，增强对非标准裸流的兼容性",
+        "增加宽松的分析参数和错误处理机制",
+        "提高视频级别以支持更高分辨率"
+      ]
+    },
     "1.0.0": {
       "date": "2024-01-01",
       "changes": [

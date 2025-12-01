@@ -46,8 +46,7 @@ if %errorlevel% neq 0 (
 echo 使用PyInstaller打包应用程序...
 pyinstaller --name V264ToMP4 ^
             --windowed ^
-            --icon=assets/icon.ico ^
-            --add-data "assets;assets" ^
+            --add-data "image;image" ^
             --add-data "config.json;." ^
             --add-data "VERSION.json;." ^
             --add-data "LICENSE;." ^

@@ -108,19 +108,24 @@ class TranscodeEngine:
         # 构建FFmpeg命令 - 生成通用MP4格式，支持拖动播放
         # 对于v264文件，我们需要先解码再编码，确保生成标准MP4格式
         # 注意：海雀监控的.v264文件实际上是HEVC/H.265格式，不是H.264格式
+        # 修复：修改输入格式检测方式，使用更通用的参数来处理裸流
         command = [
             self.ffmpeg_path,
             # 输入参数
-            "-f", "hevc",  # 明确指定输入格式为hevc（海雀.v264文件实际是H.265格式）
-            "-analyzeduration", "10M",  # 增加分析时间
-            "-probesize", "10M",  # 增加缓冲区大小
-            "-fflags", "+genpts",  # 生成显示时间戳
-            "-r", "25",  # 假设输入帧率为25fps（海雀摄像头通常使用这个帧率）
+            # 修改：不强制指定输入格式，让FFmpeg自动检测
+            # 增加更宽松的分析参数以处理可能不标准的裸流
+            "-analyzeduration", "20M",  # 进一步增加分析时间
+            "-probesize", "20M",  # 进一步增加缓冲区大小
+            "-fflags", "+genpts+igndts",  # 生成显示时间戳并忽略DTS错误
+            "-err_detect", "ignore_err",  # 忽略解码错误，尝试继续处理
             "-i", input_file,
             # 视频编码参数
             "-c:v", "libx264",  # 使用标准h.264编码，确保通用性
             "-preset", "fast",  # 快速编码预设
             "-crf", str(crf),  # 视频质量参数
+            # 添加更多容错参数
+            "-tune", "zerolatency",  # 低延迟模式，有助于处理问题流
+            "-x264opts", "keyint=25:min-keyint=25:no-scenecut",  # 固定关键帧间隔
         ]
         
         # 根据include_audio参数决定是否处理音频
@@ -136,16 +141,18 @@ class TranscodeEngine:
         
         # 继续添加其他参数
         command.extend([
-            # 兼容性参数
-            "-profile:v", "main",  # 使用main profile确保兼容性
-            "-level", "3.0",  # 视频级别，确保广泛兼容
-            "-pix_fmt", "yuv420p",  # 使用通用的YUV格式
-            # MP4封装参数
-            "-movflags", "faststart",  # 将元数据移到文件头部，支持拖动播放
-            # 输出参数
-            "-y" if overwrite else "-n",
-            output_file
-        ])
+                # 兼容性参数
+                "-profile:v", "main",  # 使用main profile确保兼容性
+                "-level", "4.0",  # 提高级别以支持更高分辨率
+                "-pix_fmt", "yuv420p",  # 使用通用的YUV格式
+                # MP4封装参数
+                "-movflags", "faststart",  # 将元数据移到文件头部，支持拖动播放
+                # 输出参数
+                "-y" if overwrite else "-n",
+                # 添加严格实验性功能支持（处理非标准流）
+                "-strict", "experimental",
+                output_file
+            ])
         
         logger.debug(f"构建FFmpeg命令: {' '.join(command)}")
         return command
@@ -176,8 +183,15 @@ class TranscodeEngine:
             
             # 确保进度在0-100之间
             progress = max(0, min(100, progress))
+            logger.debug(f"转码进度: {progress:.1f}%")
             return progress
         
+        # 检查是否有错误信息，但不要对所有错误都警告，只对严重错误警告
+        # 对于一些非致命错误，FFmpeg可能仍能继续处理
+        error_keywords = ["error:", "failed:", "could not", "unable to", "no start code", "invalid data"]
+        if any(keyword in output_line.lower() for keyword in error_keywords):
+            logger.warning(f"FFmpeg警告/错误: {output_line.strip()}")
+            
         return -1
     
     def transcode_file(self, input_file, output_file, include_audio=False):
@@ -219,6 +233,8 @@ class TranscodeEngine:
             command = self.build_ffmpeg_command(input_file, output_file, include_audio)
             
             # 执行FFmpeg命令，使用更低的bufsize并禁用输出缓冲
+            # 确保命令列表中的路径正确处理，尤其是带空格的路径
+            # subprocess会自动处理命令列表中的空格，不需要额外引号
             process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
@@ -235,6 +251,10 @@ class TranscodeEngine:
             for line in iter(process.stdout.readline, ''):
                 # 保存FFmpeg输出，用于错误分析
                 ffmpeg_output.append(line.strip())
+                
+                # 检查是否有重要的FFmpeg消息
+                if "frame=" in line or "size=" in line or "bitrate=" in line:
+                    logger.debug(f"FFmpeg输出: {line.strip()}")
                 
                 # 检查是否需要取消转码
                 if self.is_cancelled:
@@ -263,20 +283,44 @@ class TranscodeEngine:
             # 检查转码结果
             if process.returncode == 0:
                 logger.info(f"转码成功: {input_file} -> {output_file}")
+                logger.debug(f"转码完成输出:\n" + "\n".join(ffmpeg_output[-10:]))
                 # 确保进度显示为100%
                 if self.progress_callback:
                     self.progress_callback(os.path.basename(input_file), 100.0)
                 return True, ""
             else:
-                # 保存完整的FFmpeg输出到错误信息
-                ffmpeg_output_str = "\n".join(ffmpeg_output)
-                error_msg = f"FFmpeg返回错误码: {process.returncode}\n详细输出:\n{ffmpeg_output_str}"
+                # 分析错误原因，从FFmpeg输出中查找错误信息
+                error_lines = [line for line in ffmpeg_output if any(err in line.lower() for err in ["error", "failed", "could not", "unable to"])]
+                error_msg = f"FFmpeg转码失败，返回码: {process.returncode}"
+                if error_lines:
+                    # 添加最相关的错误信息
+                    error_msg += f"\n错误详情: {error_lines[-1]}"
                 logger.error(f"转码失败: {input_file} -> {output_file}, {error_msg}")
+                # 记录详细的FFmpeg输出
+                logger.debug(f"FFmpeg详细输出:\n" + "\n".join(ffmpeg_output[-50:]))
                 return False, error_msg
                 
-        except Exception as e:
-            error_msg = f"转码过程中发生错误: {str(e)}"
+        except subprocess.SubprocessError as e:
+            # 捕获子进程相关错误，提供更详细信息
+            error_msg = f"FFmpeg进程错误: {str(e)}"
             logger.error(f"转码失败: {input_file} -> {output_file}, {error_msg}")
+            return False, error_msg
+        except UnicodeDecodeError as e:
+            # 处理编码错误
+            error_msg = f"输出解码错误: {str(e)}"
+            logger.error(f"转码失败: {input_file} -> {output_file}, {error_msg}")
+            return False, error_msg
+        except KeyboardInterrupt:
+            # 处理用户中断
+            if process:
+                process.terminate()
+            error_msg = "用户中断操作"
+            logger.info(f"转码中断: {input_file} -> {output_file}, {error_msg}")
+            return False, error_msg
+        except Exception as e:
+            # 捕获其他所有异常
+            error_msg = f"转码过程中发生异常: {str(e)}"
+            logger.error(f"转码失败: {input_file} -> {output_file}, {error_msg}", exc_info=True)  # 记录完整堆栈
             return False, error_msg
     
     def get_output_filename(self, input_file, output_dir):
@@ -338,7 +382,8 @@ class TranscodeEngine:
             for file in input_files:
                 # 使用绝对路径，避免FFmpeg找不到文件
                 abs_path = os.path.abspath(file)
-                f.write(f"file '{abs_path}'\n")
+                # 在Windows上使用双引号确保路径正确解析
+                f.write(f"file \"{abs_path}\"\n")
         
         # 获取配置参数
         overwrite = self.config_manager.get_config("overwrite")
@@ -398,12 +443,49 @@ class TranscodeEngine:
         
         # 重置状态
         self.reset()
+        file_list_path = None
+        
+        # 检查输入文件列表是否为空
+        if not input_files:
+            error_msg = "合并失败: 输入文件列表为空"
+            logger.error(error_msg)
+            return False, error_msg
+        
+        # 检查所有输入文件是否存在和文件大小
+        valid_files = []
+        invalid_files = []
+        for input_file in input_files:
+            if os.path.exists(input_file):
+                if os.path.getsize(input_file) > 0:
+                    valid_files.append(input_file)
+                else:
+                    invalid_files.append(f"{input_file} (文件大小为0)")
+            else:
+                invalid_files.append(f"{input_file} (文件不存在)")
+        
+        if invalid_files:
+            error_msg = f"合并失败: 以下文件无效:\n" + "\n".join(invalid_files)
+            logger.error(error_msg)
+            return False, error_msg
+        
+        # 检查输出目录是否存在
+        output_dir = os.path.dirname(output_file)
+        if output_dir and not os.path.exists(output_dir):
+            try:
+                os.makedirs(output_dir, exist_ok=True)
+                logger.info(f"创建输出目录: {output_dir}")
+            except Exception as e:
+                error_msg = f"无法创建输出目录: {output_dir}, {str(e)}"
+                logger.error(f"合并失败: {error_msg}")
+                return False, error_msg
         
         try:
             # 构建FFmpeg合并命令
-            command, file_list_path = self.build_merge_command(input_files, output_file, include_audio)
+            command, file_list_path = self.build_merge_command(valid_files, output_file, include_audio)
             
             # 执行FFmpeg命令，使用更低的bufsize并禁用输出缓冲
+            # 确保命令列表中的路径正确处理，尤其是带空格的路径
+            # subprocess会自动处理命令列表中的空格，不需要额外引号
             process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
@@ -415,8 +497,12 @@ class TranscodeEngine:
                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             )
             
-            # 读取FFmpeg输出
+            # 读取FFmpeg输出并保存以供错误分析
+            output_lines = []
             for line in iter(process.stdout.readline, ''):
+                line_content = line.strip()
+                output_lines.append(line_content)
+                
                 # 检查是否需要取消合并
                 if self.is_cancelled:
                     process.terminate()
@@ -429,8 +515,9 @@ class TranscodeEngine:
                     import time
                     time.sleep(0.1)
                 
-                # 记录FFmpeg输出
-                logger.debug(f"FFmpeg合并输出: {line.strip()}")
+                # 只记录重要的FFmpeg输出信息，避免日志过大
+                if any(keyword in line_content.lower() for keyword in ["frame", "size", "bitrate", "error", "failed", "warning"]):
+                    logger.debug(f"FFmpeg合并输出: {line_content}")
             
             # 等待进程结束
             process.wait()
@@ -440,15 +527,49 @@ class TranscodeEngine:
                 os.remove(file_list_path)
             
             # 检查合并结果
-            if process.returncode == 0:
-                logger.info(f"视频合并成功: {output_file}")
+            if process.returncode == 0 and os.path.exists(output_file):
+                file_size = os.path.getsize(output_file)
+                logger.info(f"视频合并成功: {output_file} (文件大小: {file_size/1024/1024:.2f} MB)")
+                logger.debug(f"合并完成输出:\n" + "\n".join(output_lines[-10:]))
                 return True, ""
             else:
+                # 分析错误原因
+                error_lines = [line for line in output_lines if any(err in line.lower() for err in ["error", "failed", "could not", "unable to"])]
                 error_msg = f"FFmpeg返回错误码: {process.returncode}"
+                if error_lines:
+                    error_msg += f"\n错误详情: {error_lines[-1]}"
+                
+                # 检查输出文件是否存在但可能不完整
+                if os.path.exists(output_file):
+                    error_msg += f"\n输出文件已创建但可能不完整: {output_file}"
+                
                 logger.error(f"视频合并失败: {output_file}, {error_msg}")
+                logger.debug(f"FFmpeg合并详细输出:\n" + "\n".join(output_lines[-50:]))
                 return False, error_msg
                 
-        except Exception as e:
-            error_msg = f"视频合并过程中发生错误: {str(e)}"
+        except subprocess.SubprocessError as e:
+            error_msg = f"FFmpeg进程错误: {str(e)}"
             logger.error(f"视频合并失败: {output_file}, {error_msg}")
             return False, error_msg
+        except UnicodeDecodeError as e:
+            error_msg = f"输出解码错误: {str(e)}"
+            logger.error(f"视频合并失败: {output_file}, {error_msg}")
+            return False, error_msg
+        except KeyboardInterrupt:
+            if process:
+                process.terminate()
+            error_msg = "用户中断合并操作"
+            logger.info(f"视频合并中断: {output_file}, {error_msg}")
+            return False, error_msg
+        except Exception as e:
+            error_msg = f"视频合并过程中发生异常: {str(e)}"
+            logger.error(f"视频合并失败: {output_file}, {error_msg}", exc_info=True)  # 记录完整堆栈
+            return False, error_msg
+        finally:
+            # 确保临时文件被清理
+            if file_list_path and os.path.exists(file_list_path):
+                try:
+                    os.remove(file_list_path)
+                    logger.debug(f"已删除临时文件列表: {file_list_path}")
+                except Exception as e:
+                    logger.warning(f"无法删除临时文件列表: {file_list_path}, {str(e)}")
